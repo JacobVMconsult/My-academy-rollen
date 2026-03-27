@@ -242,15 +242,25 @@ function initials(naam) {
   return ((p[1]||'')[0]||'') + ((p[0]||'')[0]||'');
 }
 
-function renderCard(u) {
+function renderCard(u, merkFilter) {
   const vc = VEST_COLORS[u.vestiging] || {bg:'#eeecea',txt:'#555'};
   const ini = initials(u.naam).toUpperCase() || '?';
   let dealerHtml = '';
-  if (!u.dealers.length) {
+
+  // When a merk filter is active, only show dealer blocks that have roles for that merk
+  const dealers = merkFilter
+    ? u.dealers.filter(d => d.roles.some(r => r.merk === merkFilter))
+    : u.dealers;
+
+  if (!dealers.length) {
     dealerHtml = '<div class="no-roles">Geen roltoewijzingen gevonden</div>';
   } else {
-    dealerHtml = u.dealers.map(d => {
-      const roles = d.roles.filter(r => r.titel && r.titel !== '-').map(r => {
+    dealerHtml = dealers.map(d => {
+      // When merk filter active, only show roles for that merk within the dealer block
+      const rolesToShow = merkFilter
+        ? d.roles.filter(r => r.merk === merkFilter && r.titel && r.titel !== '-')
+        : d.roles.filter(r => r.titel && r.titel !== '-');
+      const roles = rolesToShow.map(r => {
         const cls = r.type === 'Hoofdfunctie' ? 'hf' : 'df';
         const mrkLbl = r.merk ? `<span style="opacity:.7;font-weight:400">${r.merk} — </span>` : '';
         return `<span class="role-pill ${cls}" title="${r.type||''}">${mrkLbl}${r.titel}</span>`;
@@ -296,6 +306,7 @@ function filter() {
 
 function render() {
   const res = filter();
+  const m = document.getElementById('merk-filter').value;
   const el = document.getElementById('results');
   const st = document.getElementById('stats');
   if (!res.length) {
@@ -303,7 +314,7 @@ function render() {
     st.textContent = ''; return;
   }
   st.textContent = `${res.length} gebruiker${res.length !== 1 ? 's' : ''} gevonden`;
-  el.innerHTML = res.map(renderCard).join('');
+  el.innerHTML = res.map(u => renderCard(u, m)).join('');
 }
 
 document.getElementById('srch').addEventListener('input', render);
